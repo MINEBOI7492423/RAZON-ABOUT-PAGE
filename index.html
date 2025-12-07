@@ -452,7 +452,13 @@
                 }
 
                 try {
-                    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vREz5m8QlNqvs6JNXmR-rTZvl1c9HWSNLjL2XVBCKTfwZ23uYN8ymsvNdG59VX1B4Xvpff7igytnDw3/pub?output=csv');
+                    // Use CORS proxy to fetch the CSV
+                    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vREz5m8QlNqvs6JNXmR-rTZvl1c9HWSNLjL2XVBCKTfwZ23uYN8ymsvNdG59VX1B4Xvpff7igytnDw3/pub?output=csv&timestamp=' + new Date().getTime());
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                    
                     const data = await response.text();
                     
                     // Parse CSV
@@ -464,17 +470,22 @@
                     // Create game cards
                     rows.forEach(row => {
                         if (row.trim()) {
-                            const [name, link] = row.split(',').map(item => item.trim().replace(/"/g, ''));
-                            
-                            if (name && link) {
-                                const gameCard = document.createElement('div');
-                                gameCard.className = 'game-card';
-                                gameCard.innerHTML = `
-                                    <a href="${link}" target="_blank">
-                                        <h3>${name}</h3>
-                                    </a>
-                                `;
-                                gamesGrid.appendChild(gameCard);
+                            // Handle CSV parsing with commas in URLs
+                            const match = row.match(/^"?([^",]+)"?,\s*"?([^"]+)"?/);
+                            if (match) {
+                                const name = match[1].trim();
+                                const link = match[2].trim();
+                                
+                                if (name && link) {
+                                    const gameCard = document.createElement('div');
+                                    gameCard.className = 'game-card';
+                                    gameCard.innerHTML = `
+                                        <a href="${link}" target="_blank">
+                                            <h3>${name}</h3>
+                                        </a>
+                                    `;
+                                    gamesGrid.appendChild(gameCard);
+                                }
                             }
                         }
                     });
@@ -485,7 +496,7 @@
                     }
                 } catch (error) {
                     console.error('Error loading games:', error);
-                    loading.textContent = 'Error loading games. Please try again later.';
+                    loading.textContent = 'Could not load games. Make sure your Google Sheet is published to the web.';
                 }
             }
         </script>
